@@ -35,9 +35,20 @@ layout: default
 </div>
 
 <script>
-function toggleSharePreview(button) {
+function sharePost(button) {
     const card = button.closest('.card');
-    const preview = card.querySelector('.share-preview');
-    preview.classList.toggle('visible');
+    const title = 'The Inkwell';
+    const text = card.querySelector('.poem-text, .sentiment-text, .story-excerpt')?.textContent || '';
+    const url = window.location.href;
+    
+    if (navigator.share) {
+        navigator.share({
+            title: title,
+            text: text.substring(0, 100),
+            url: url
+        }).catch(err => console.log('Share failed:', err));
+    } else {
+        alert('Share this URL: ' + url);
+    }
 }
 </script>
