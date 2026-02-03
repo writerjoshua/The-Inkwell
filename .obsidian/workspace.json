@@ -183,8 +183,9 @@
       "bases:Create new base": false
     }
   },
-  "active": "7a528a20c893f3c1",
+  "active": "dd15ba96741b21e7",
   "lastOpenFiles": [
+    "_layouts/about-beau.md",
     "_poetry/centered-steady.md.md",
     "sentiment.md",
     "_layouts/story.html",
