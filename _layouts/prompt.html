@@ -62,3 +62,21 @@ layout: default
         <a href="{{ site.baseurl }}/prompts/" style="display: inline-block; margin-top: 2rem; color: #8b7355; text-decoration: underline;">← Back to Prompts</a>
     </div>
 </div>
+<script>
+function sharePost(button) {
+    const card = button.closest('.card');
+    const title = 'The Inkwell';
+    const text = card.querySelector('.poem-text, .sentiment-text, .story-excerpt')?.textContent || '';
+    const url = window.location.href;
+    
+    if (navigator.share) {
+        navigator.share({
+            title: title,
+            text: text.substring(0, 100),
+            url: url
+        }).catch(err => console.log('Share failed:', err));
+    } else {
+        alert('Share this URL: ' + url);
+    }
+}
+</script>
