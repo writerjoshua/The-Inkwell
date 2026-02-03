@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "about-beau.md.md",
+                "file": "about-beau.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "about-beau.md"
+              "title": "about-beau"
             }
           }
         ]
@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "about-beau.md.md",
+                "file": "about-beau.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for about-beau.md"
+              "title": "Backlinks for about-beau"
             }
           },
           {
@@ -113,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "about-beau.md.md",
+                "file": "about-beau.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from about-beau.md"
+              "title": "Outgoing links from about-beau"
             }
           },
           {
@@ -156,13 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "about-beau.md.md",
+                "file": "about-beau.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of about-beau.md"
+              "title": "Outline of about-beau"
             }
           }
         ]
@@ -183,21 +183,21 @@
       "bases:Create new base": false
     }
   },
-  "active": "dd15ba96741b21e7",
+  "active": "7a528a20c893f3c1",
   "lastOpenFiles": [
-    "index.md",
-    "about-beau.md.md",
-    "_poetry/centered-steady.md.md",
     "sentiment.md",
+    "prompts.md",
+    "poetry.md",
+    "index.md",
+    "stories.md",
+    "about-beau.md",
+    "_poetry/centered-steady.md.md",
     "_layouts/story.html",
     "_layouts/sentiment.html",
     "_layouts/prompt.html",
     "_layouts/poetry.html",
     "_layouts/default.html",
-    "stories.md",
     "README.md",
-    "prompts.md",
-    "poetry.md",
     "_config 1.yml",
     "Untitled",
     "_config.yml",
