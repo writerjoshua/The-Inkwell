@@ -23,26 +23,77 @@
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
-    <!-- Static Header -->
-    <header id="header">
-        <h1>The Inkwell</h1>
-        <p class="subtitle">Poetry and Prose by American Romance Writer, Beau Holliday</p>
-    </header>
+    <!-- Side Navigation -->
+    <aside id="side-nav" class="side-nav">
+        <div class="side-nav-header">
+            <h2>The Inkwell</h2>
+            <button id="close-nav" class="close-nav">✕</button>
+        </div>
+        
+        <nav class="side-nav-menu">
+            <div class="nav-item">
+                <button class="nav-link" data-page="home">Home</button>
+            </div>
 
-    <!-- Dynamic Content Area -->
-    <div class="container" id="content">
-        <!-- Content loads here -->
+            <div class="nav-section">
+                <button class="nav-section-btn" data-section="read">
+                    <span>Read</span>
+                    <span class="arrow">›</span>
+                </button>
+                <div class="nav-submenu" id="read-menu">
+                    <button class="nav-link" data-page="about-beau">About Beau</button>
+                    <button class="nav-link" data-page="poetry">Poetry</button>
+                    <button class="nav-link" data-page="sentiment">Sentiment</button>
+                    <button class="nav-link" data-page="stories">Stories</button>
+                </div>
+            </div>
+
+            <div class="nav-section">
+                <button class="nav-section-btn" data-section="write">
+                    <span>Write</span>
+                    <span class="arrow">›</span>
+                </button>
+                <div class="nav-submenu" id="write-menu">
+                    <button class="nav-link" data-page="prompts">Prompts</button>
+                </div>
+            </div>
+
+            <div class="nav-section">
+                <button class="nav-section-btn" data-section="keep">
+                    <span>Keep</span>
+                    <span class="arrow">›</span>
+                </button>
+                <div class="nav-submenu" id="keep-menu">
+                    <button class="nav-link" data-page="library">Library</button>
+                </div>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+        <!-- Static Header -->
+        <header id="header">
+            <div class="header-content">
+                <button id="menu-toggle" class="menu-toggle">☰</button>
+                <h1>The Inkwell</h1>
+                <div class="header-spacer"></div>
+            </div>
+            <p class="subtitle">Poetry and Prose by American Romance Writer, Beau Holliday</p>
+        </header>
+
+        <!-- Dynamic Content Area -->
+        <div class="container" id="content">
+            <!-- Content loads here -->
+        </div>
     </div>
 
-    <!-- Static Navigation -->
-    <nav id="nav">
-        <button class="nav-btn active" data-page="everything">Everything</button>
-        <button class="nav-btn" data-page="poetry">Poetry</button>
-        <button class="nav-btn" data-page="sentiment">Sentiment</button>
-        <button class="nav-btn" data-page="stories">Stories</button>
-        <button class="nav-btn" data-page="prompts">Prompts</button>
-        <button class="nav-btn" data-page="library">Library</button>
-        <button class="nav-btn" data-page="about-beau">About Beau</button>
+    <!-- Bottom Navigation -->
+    <nav id="bottom-nav" class="bottom-nav">
+        <button class="bottom-nav-btn active" data-page="home">Home</button>
+        <button class="bottom-nav-btn" data-page="everything">Read</button>
+        <button class="bottom-nav-btn" data-page="prompts">Write</button>
+        <button class="bottom-nav-btn" data-page="library">Keep</button>
     </nav>
 
     <script src="assets/js/app.js"></script>
