@@ -1,15 +1,53 @@
-// The Inkwell — SPA Application with Markdown Posts & Pages
+// The Inkwell — SPA Application with Side Navigation
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
     setupNavigation();
-    loadPage('everything');
+    setupSideNav();
+    loadPage('home');
     updateMetaTags('The Inkwell', 'Poetry and Prose by American Romance Writer, Beau Holliday', '/assets/media/beauholliday.jpg');
 });
 
-// Navigation Setup
+// Setup Side Navigation
+function setupSideNav() {
+    const menuToggle = document.getElementById('menu-toggle');
+    const closeNav = document.getElementById('close-nav');
+    const sideNav = document.getElementById('side-nav');
+    const navLinks = document.querySelectorAll('.nav-link');
+    const sectionBtns = document.querySelectorAll('.nav-section-btn');
+
+    // Toggle side nav
+    menuToggle.addEventListener('click', () => {
+        sideNav.classList.toggle('open');
+    });
+
+    closeNav.addEventListener('click', () => {
+        sideNav.classList.remove('open');
+    });
+
+    // Close nav when clicking a link
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            const page = e.target.dataset.page;
+            loadPage(page);
+            sideNav.classList.remove('open');
+        });
+    });
+
+    // Collapsible sections
+    sectionBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const section = btn.dataset.section;
+            const menu = document.getElementById(`${section}-menu`);
+            btn.classList.toggle('open');
+            menu.classList.toggle('open');
+        });
+    });
+}
+
+// Setup Bottom Navigation
 function setupNavigation() {
-    document.querySelectorAll('.nav-btn').forEach(btn => {
+    document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const page = e.target.dataset.page;
             loadPage(page);
@@ -19,28 +57,28 @@ function setupNavigation() {
 
 // Load Page
 function loadPage(page) {
-    // Update active nav button
-    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`[data-page="${page}"]`).classList.add('active');
+    // Update active nav buttons
+    document.querySelectorAll('.bottom-nav-btn, .nav-link').forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
 
     // Render content
     const contentEl = document.getElementById('content');
     contentEl.innerHTML = '<div class="loading">Loading...</div>';
     
-    if (page === 'everything') {
+    if (page === 'home') {
+        renderHome().then(html => {
+            contentEl.innerHTML = html;
+            setupPostInteractions();
+            window.scrollTo(0, 0);
+        });
+    } else if (page === 'everything') {
         renderFeed().then(html => {
             contentEl.innerHTML = html;
             setupPostInteractions();
             window.scrollTo(0, 0);
         });
-    } else if (page === 'about-beau') {
-        renderMarkdownPage('about').then(html => {
-            contentEl.innerHTML = html;
-            setupPostInteractions();
-            window.scrollTo(0, 0);
-        });
-    } else if (page === 'library') {
-        renderMarkdownPage('library').then(html => {
+    } else if (page === 'about-beau' || page === 'library') {
+        renderMarkdownPage(page === 'about-beau' ? 'about' : 'library').then(html => {
             contentEl.innerHTML = html;
             setupPostInteractions();
             window.scrollTo(0, 0);
@@ -54,7 +92,82 @@ function loadPage(page) {
     }
 }
 
-// Fetch markdown files from a directory
+// Render Home Page
+async function renderHome() {
+    try {
+        const [allPoetry, allSentiment, allStories, allPrompts] = await Promise.all([
+            fetchMarkdownFiles('poetry'),
+            fetchMarkdownFiles('sentiment'),
+            fetchMarkdownFiles('stories'),
+            fetchMarkdownFiles('prompts')
+        ]);
+
+        const allPosts = [
+            ...allPoetry,
+            ...allSentiment,
+            ...allStories,
+            ...allPrompts
+        ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        const latestPost = allPosts[0];
+        const latestPosts = allPosts.slice(0, 3);
+
+        return `
+            ${renderHero()}
+
+            <div style="margin-top: 3rem;">
+                <h2 style="font-family: 'Playfair Display', serif; font-size: 1.8rem; margin-bottom: 1.5rem; color: #3d2817; border-bottom: 2px dashed #8b7355; padding-bottom: 0.8rem; letter-spacing: 1px;">Latest Writings</h2>
+                <div class="feed">
+                    ${latestPosts.map(post => renderPostCard(post)).join('')}
+                </div>
+            </div>
+
+            ${await renderLibraryPreview()}
+        `;
+    } catch (err) {
+        console.error('Error rendering home:', err);
+        return `<div class="empty-state"><p>Error loading home. 💌</p></div>`;
+    }
+}
+
+// Render Hero Section
+function renderHero() {
+    return `
+        <div class="hero">
+            <div class="hero-content">
+                <h2>The Inkwell</h2>
+                <p>Essays in Romance & Reverie</p>
+                <p style="margin-top: 1.5rem; font-size: 1rem;">Poetry and prose exploring desire, vulnerability, and the spaces between words.</p>
+            </div>
+        </div>
+    `;
+}
+
+// Render Library Preview
+async function renderLibraryPreview() {
+    try {
+        const response = await fetch('posts/library.md');
+        if (!response.ok) return '';
+
+        const markdown = await response.text();
+        const { content } = parsePageMarkdown(markdown);
+        const preview = content.substring(0, 300) + '...';
+
+        return `
+            <div style="margin-top: 3rem; background: linear-gradient(135deg, #fffbf5 0%, #fef5e7 100%); border: 2px solid #8b7355; padding: 2rem; box-shadow: 2px 2px 8px rgba(0,0,0,.08);">
+                <h2 style="font-family: 'Playfair Display', serif; font-size: 1.8rem; margin-bottom: 1rem; color: #3d2817; letter-spacing: 1px;">The Library</h2>
+                <p style="font-size: 1rem; line-height: 1.8; margin-bottom: 1.5rem; color: #444;">
+                    ${preview}
+                </p>
+                <button class="action-btn" style="border: 2px solid #8b7355; padding: 0.8rem 1.5rem; font-size: 0.9rem;" onclick="loadPage('library')">Explore the Library</button>
+            </div>
+        `;
+    } catch (err) {
+        return '';
+    }
+}
+
+// Fetch markdown files
 async function fetchMarkdownFiles(type) {
     try {
         const response = await fetch(`posts/${type}/`);
@@ -64,7 +177,6 @@ async function fetchMarkdownFiles(type) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
         
-        // Extract .md file links
         const links = Array.from(doc.querySelectorAll('a'))
             .map(a => a.href)
             .filter(href => href.endsWith('.md'))
@@ -92,7 +204,7 @@ async function fetchMarkdownFiles(type) {
     }
 }
 
-// Fetch and render markdown page (About, Library)
+// Fetch and render markdown page
 async function fetchMarkdownPage(filename) {
     try {
         const response = await fetch(`posts/${filename}.md`);
@@ -119,16 +231,19 @@ async function fetchMarkdownPage(filename) {
     }
 }
 
-// Parse Markdown with YAML Frontmatter
+// Render Markdown Page
+async function renderMarkdownPage(filename) {
+    return fetchMarkdownPage(filename);
+}
+
+// Parse Markdown with YAML
 function parseMarkdown(markdown, type, filename) {
-    // Match YAML frontmatter
     const frontmatterMatch = markdown.match(/^---\n([\s\S]*?)\n---/);
     if (!frontmatterMatch) return null;
 
     const frontmatter = frontmatterMatch[1];
     const content = markdown.replace(/^---\n[\s\S]*?\n---\n/, '').trim();
 
-    // Parse YAML manually (simple approach)
     const metadata = {};
     frontmatter.split('\n').forEach(line => {
         const [key, ...valueParts] = line.split(':');
@@ -138,7 +253,6 @@ function parseMarkdown(markdown, type, filename) {
         }
     });
 
-    // Generate ID from filename
     const id = filename.replace('.md', '');
 
     return {
@@ -154,9 +268,8 @@ function parseMarkdown(markdown, type, filename) {
     };
 }
 
-// Parse Page Markdown (About, Library)
+// Parse Page Markdown
 function parsePageMarkdown(markdown) {
-    // Match YAML frontmatter
     const frontmatterMatch = markdown.match(/^---\n([\s\S]*?)\n---/);
     
     let metadata = {};
@@ -166,7 +279,6 @@ function parsePageMarkdown(markdown) {
         const frontmatter = frontmatterMatch[1];
         content = markdown.replace(/^---\n[\s\S]*?\n---\n/, '').trim();
 
-        // Parse YAML
         frontmatter.split('\n').forEach(line => {
             const [key, ...valueParts] = line.split(':');
             if (key && valueParts.length > 0) {
@@ -183,31 +295,22 @@ function parsePageMarkdown(markdown) {
 function parseContentMarkdown(markdown) {
     let html = escapeHtml(markdown);
 
-    // Headers
     html = html.replace(/^### (.*?)$/gm, '<h3 style="font-family: \'Playfair Display\', serif; font-size: 1.3rem; margin: 1.5rem 0 0.5rem 0; color: #3d2817;">$1</h3>');
     html = html.replace(/^## (.*?)$/gm, '<h2 style="font-family: \'Playfair Display\', serif; font-size: 1.6rem; margin: 2rem 0 1rem 0; color: #3d2817;">$1</h2>');
     html = html.replace(/^# (.*?)$/gm, '<h1 style="font-family: \'Playfair Display\', serif; font-size: 2rem; margin: 2rem 0 1rem 0; color: #3d2817;">$1</h1>');
 
-    // Bold
     html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-    // Italic
     html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-
-    // Links
     html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" style="color: #c9685a; text-decoration: underline;">$1</a>');
 
-    // Line breaks and paragraphs
     html = html.replace(/\n\n/g, '</p><p style="margin: 1rem 0;">');
     html = '<p style="margin: 1rem 0;">' + html + '</p>';
-
-    // Clean up
     html = html.replace(/<p><\/p>/g, '');
 
     return html;
 }
 
-// Render Feed (All Posts)
+// Render Feed
 async function renderFeed() {
     try {
         const [poetry, sentiment, stories, prompts] = await Promise.all([
@@ -344,7 +447,7 @@ function renderPostCard(post) {
     }
 }
 
-// Render Full Story Page
+// Render Story Page
 function renderStoryPage(postId, post) {
     if (!post) return '';
 
@@ -430,7 +533,6 @@ function renderPromptPage(postId, post) {
 
 // Setup Post Interactions
 function setupPostInteractions() {
-    // Share buttons
     document.querySelectorAll('.share-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const card = e.target.closest('.card');
@@ -441,13 +543,11 @@ function setupPostInteractions() {
         });
     });
 
-    // Read Full Story buttons
     document.querySelectorAll('.read-story-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const card = e.target.closest('.card');
             const postId = card.dataset.postId;
             
-            // Find the full post data
             const posts = await fetchMarkdownFiles('stories');
             const post = posts.find(p => p.id === postId);
             
@@ -458,13 +558,11 @@ function setupPostInteractions() {
         });
     });
 
-    // View Prompt buttons
     document.querySelectorAll('.view-prompt-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const card = e.target.closest('.card');
             const postId = card.dataset.postId;
             
-            // Find the full post data
             const posts = await fetchMarkdownFiles('prompts');
             const post = posts.find(p => p.id === postId);
             
@@ -475,7 +573,6 @@ function setupPostInteractions() {
         });
     });
 
-    // Back to feed buttons
     document.querySelectorAll('.back-to-feed').forEach(btn => {
         btn.addEventListener('click', () => {
             loadPage('everything');
@@ -504,4 +601,3 @@ function escapeHtml(text) {
     };
     return text.replace(/[&<>"']/g, m => map[m]);
 }
-//I Love You 🌹
