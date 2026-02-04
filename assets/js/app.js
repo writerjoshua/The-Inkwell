@@ -1,4 +1,4 @@
-// The Inkwell — SPA Application with Markdown Posts
+// The Inkwell — SPA Application with Markdown Posts & Pages
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
@@ -34,9 +34,17 @@ function loadPage(page) {
             window.scrollTo(0, 0);
         });
     } else if (page === 'about-beau') {
-        contentEl.innerHTML = renderAbout();
-        setupPostInteractions();
-        window.scrollTo(0, 0);
+        renderMarkdownPage('about').then(html => {
+            contentEl.innerHTML = html;
+            setupPostInteractions();
+            window.scrollTo(0, 0);
+        });
+    } else if (page === 'library') {
+        renderMarkdownPage('library').then(html => {
+            contentEl.innerHTML = html;
+            setupPostInteractions();
+            window.scrollTo(0, 0);
+        });
     } else {
         renderCollection(page).then(html => {
             contentEl.innerHTML = html;
@@ -84,6 +92,33 @@ async function fetchMarkdownFiles(type) {
     }
 }
 
+// Fetch and render markdown page (About, Library)
+async function fetchMarkdownPage(filename) {
+    try {
+        const response = await fetch(`posts/${filename}.md`);
+        if (!response.ok) {
+            return `<div class="empty-state"><p>Page not found. 💌</p></div>`;
+        }
+
+        const markdown = await response.text();
+        const { metadata, content } = parsePageMarkdown(markdown);
+
+        return `
+            <div style="max-width: 900px; margin: 0 auto;">
+                ${metadata.title ? `<h1 style="font-family: 'Playfair Display', serif; font-size: 2rem; margin-bottom: 2rem; color: #3d2817; text-align: center;">${escapeHtml(metadata.title)}</h1>` : ''}
+                <div style="background: white; border: 2px solid #8b7355; padding: 2rem; position: relative; box-shadow: 2px 2px 8px rgba(0,0,0,.08);">
+                    <div style="position: relative; z-index: 2; font-size: 1rem; line-height: 1.8; color: #444;">
+                        ${parseContentMarkdown(content)}
+                    </div>
+                </div>
+            </div>
+        `;
+    } catch (err) {
+        console.error('Error loading page:', err);
+        return `<div class="empty-state"><p>Error loading page. 💌</p></div>`;
+    }
+}
+
 // Parse Markdown with YAML Frontmatter
 function parseMarkdown(markdown, type, filename) {
     // Match YAML frontmatter
@@ -117,6 +152,59 @@ function parseMarkdown(markdown, type, filename) {
         excerpt: metadata.excerpt || content.substring(0, 150),
         content
     };
+}
+
+// Parse Page Markdown (About, Library)
+function parsePageMarkdown(markdown) {
+    // Match YAML frontmatter
+    const frontmatterMatch = markdown.match(/^---\n([\s\S]*?)\n---/);
+    
+    let metadata = {};
+    let content = markdown;
+
+    if (frontmatterMatch) {
+        const frontmatter = frontmatterMatch[1];
+        content = markdown.replace(/^---\n[\s\S]*?\n---\n/, '').trim();
+
+        // Parse YAML
+        frontmatter.split('\n').forEach(line => {
+            const [key, ...valueParts] = line.split(':');
+            if (key && valueParts.length > 0) {
+                const value = valueParts.join(':').trim().replace(/^['"]|['"]$/g, '');
+                metadata[key.trim()] = value;
+            }
+        });
+    }
+
+    return { metadata, content };
+}
+
+// Parse content markdown to HTML
+function parseContentMarkdown(markdown) {
+    let html = escapeHtml(markdown);
+
+    // Headers
+    html = html.replace(/^### (.*?)$/gm, '<h3 style="font-family: \'Playfair Display\', serif; font-size: 1.3rem; margin: 1.5rem 0 0.5rem 0; color: #3d2817;">$1</h3>');
+    html = html.replace(/^## (.*?)$/gm, '<h2 style="font-family: \'Playfair Display\', serif; font-size: 1.6rem; margin: 2rem 0 1rem 0; color: #3d2817;">$1</h2>');
+    html = html.replace(/^# (.*?)$/gm, '<h1 style="font-family: \'Playfair Display\', serif; font-size: 2rem; margin: 2rem 0 1rem 0; color: #3d2817;">$1</h1>');
+
+    // Bold
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    // Italic
+    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+    // Links
+    html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" style="color: #c9685a; text-decoration: underline;">$1</a>');
+
+    // Line breaks and paragraphs
+    html = html.replace(/\n\n/g, '</p><p style="margin: 1rem 0;">');
+    html = '<p style="margin: 1rem 0;">' + html + '</p>';
+
+    // Clean up
+    html = html.replace(/<p><\/p>/g, '');
+
+    return html;
 }
 
 // Render Feed (All Posts)
@@ -340,82 +428,6 @@ function renderPromptPage(postId, post) {
     `;
 }
 
-// Render About Page
-function renderAbout() {
-    return `
-        <div style="max-width: 900px; margin: 0 auto;">
-            <div class="about-section">
-                <div class="about-content">
-                    <h2 class="section-title">About Beau Holliday</h2>
-                    
-                    <p class="bio-text">
-                        Beau Holliday is an old soul from the Southwest, published independently, pursuing shamelessness through song, poem, and prose.
-                    </p>
-
-                    <img src="/assets/media/profile-image.jpg" alt="Beau Holliday" class="profile-image" onerror="this.style.display='none'">
-
-                    <div class="bio-highlight">
-                        An American musician, writer, romance author, and poet—Beau's presence weaves across web and social media with an obsession for the romantic and sensual. Drawing from the psychological and spiritual aspects of sex, the history and mysticism of desire, these explorations manifest in pseudo-fictional fantasies, academic pursuits, and philosophical ponderings within unique and intriguing artistic endeavors, both online and off.
-                    </div>
-
-                    <p class="bio-text">
-                        At the heart of The Inkwell lies a philosophy: <em>that vulnerability is a language all its own, that desire deserves to be explored without apology, and that the spaces between words often hold more truth than the words themselves.</em>
-                    </p>
-
-                    <p class="bio-text">
-                        Beau's work spans across mediums—music that echoes with longing, poetry that cuts to the bone, short stories that linger in the margins of your thoughts. Each piece is an invitation to sit with the uncomfortable, the beautiful, and the deeply human experience of connection.
-                    </p>
-                </div>
-            </div>
-
-            <div class="about-section">
-                <div class="about-content">
-                    <h2 class="section-title">Artistic Mediums</h2>
-                    
-                    <ul class="mediums-list">
-                        <li>Music & Songwriting</li>
-                        <li>Poetry & Verse</li>
-                        <li>Prose & Short Stories</li>
-                        <li>Essay & Philosophical Writing</li>
-                        <li>Academic Exploration</li>
-                    </ul>
-
-                    <p class="bio-text" style="margin-top: 1.5rem;">
-                        Each medium is a different language for the same obsession: understanding desire, intimacy, and the mysterious pull between two souls.
-                    </p>
-                </div>
-            </div>
-
-            <div class="contact-section">
-                <div class="contact-content">
-                    <h2 class="section-title">Connect with Beau</h2>
-                    
-                    <div class="contact-item">
-                        <div class="contact-label">Website</div>
-                        <div class="contact-value">
-                            <a href="https://www.BeauHolliday.com" target="_blank">www.BeauHolliday.com</a>
-                        </div>
-                    </div>
-
-                    <div class="contact-item">
-                        <div class="contact-label">Phone</div>
-                        <div class="contact-value">
-                            <a href="tel:+13054324849">+1 (305) 432-4849</a>
-                        </div>
-                    </div>
-
-                    <div class="contact-item">
-                        <div class="contact-label">Location</div>
-                        <div class="contact-value">
-                            Southwest & Montreal
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
 // Setup Post Interactions
 function setupPostInteractions() {
     // Share buttons
@@ -480,7 +492,7 @@ function updateMetaTags(title, description, image) {
     document.querySelector('meta[name="twitter:description"]').setAttribute('content', description);
     document.querySelector('meta[name="twitter:image"]').setAttribute('content', image);
 }
-// I love you 🌹
+
 // Escape HTML
 function escapeHtml(text) {
     const map = {
@@ -492,3 +504,4 @@ function escapeHtml(text) {
     };
     return text.replace(/[&<>"']/g, m => map[m]);
 }
+//I Love You 🌹
