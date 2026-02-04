@@ -1,73 +1,4 @@
-// The Inkwell — SPA Application
-
-// Post Data Structure
-const postsData = {
-    poetry: [
-        {
-            id: 'poem-1',
-            title: 'In the Margin',
-            date: '2026-02-02',
-            author: 'Beau Holliday',
-            image: '/assets/media/beauholliday.jpg',
-            content: `In the margin of your handwriting
-I found myself—
-a word you circled twice
-with such intention
-that I knew
-you meant it for me.`,
-            excerpt: 'A discovery in the margins of handwriting'
-        }
-    ],
-    sentiment: [
-        {
-            id: 'sentiment-1',
-            date: '2026-02-01',
-            author: 'Beau Holliday',
-            image: '/assets/media/beauholliday.jpg',
-            content: `There's something about February—the way it demands vulnerability. Winter strips away pretense, and you're left with only what matters. That's when you know if someone's really there, or just keeping you warm until spring arrives.`,
-            excerpt: 'Thoughts on February and vulnerability'
-        }
-    ],
-    stories: [
-        {
-            id: 'story-1',
-            title: 'The Space Between Words',
-            date: '2026-01-30',
-            author: 'Beau Holliday',
-            cover: '/assets/media/beauholliday.jpg',
-            image: '/assets/media/beauholliday.jpg',
-            excerpt: 'A translator discovers that the gaps in language hold more meaning than the words themselves.',
-            content: `A translator discovers that the gaps in language hold more meaning than the words themselves. When she meets the author of an untranslated manuscript, she learns the real story lives in what remains unsaid.
-
-She found the manuscript in a used bookstore, wedged between two oversized art books. The spine was cracked, the pages yellowed. The title was in a language she didn't recognize.
-
-For three weeks, she carried it with her, studying it, learning it. Each sentence revealed something new about the structure, the rhythm, the intention behind the words.
-
-When she finally met the author at a gallery opening, she understood: the spaces between words were where the real magic lived.`
-        }
-    ],
-    prompts: [
-        {
-            id: 'prompt-1',
-            title: 'Letters Never Sent',
-            date: '2026-02-02',
-            author: 'Beau Holliday',
-            image: '/assets/media/beauholliday.jpg',
-            content: `Write about a letter—real or imagined—that was never delivered. What did it say? Why was it kept hidden? Does the recipient ever discover it?`,
-            submissions: 0
-        }
-    ]
-};
-
-// Page Templates
-const pageTemplates = {
-    everything: () => renderFeed(),
-    poetry: () => renderCollection('poetry'),
-    sentiment: () => renderCollection('sentiment'),
-    stories: () => renderCollection('stories'),
-    prompts: () => renderCollection('prompts'),
-    'about-beau': () => renderAbout()
-};
+// The Inkwell — SPA Application with Markdown Posts
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
@@ -94,47 +25,148 @@ function loadPage(page) {
 
     // Render content
     const contentEl = document.getElementById('content');
-    contentEl.innerHTML = '';
+    contentEl.innerHTML = '<div class="loading">Loading...</div>';
     
-    if (pageTemplates[page]) {
-        const html = pageTemplates[page]();
-        contentEl.innerHTML = html;
+    if (page === 'everything') {
+        renderFeed().then(html => {
+            contentEl.innerHTML = html;
+            setupPostInteractions();
+            window.scrollTo(0, 0);
+        });
+    } else if (page === 'about-beau') {
+        contentEl.innerHTML = renderAbout();
         setupPostInteractions();
         window.scrollTo(0, 0);
+    } else {
+        renderCollection(page).then(html => {
+            contentEl.innerHTML = html;
+            setupPostInteractions();
+            window.scrollTo(0, 0);
+        });
     }
+}
+
+// Fetch markdown files from a directory
+async function fetchMarkdownFiles(type) {
+    try {
+        const response = await fetch(`posts/${type}/`);
+        if (!response.ok) return [];
+
+        const html = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        
+        // Extract .md file links
+        const links = Array.from(doc.querySelectorAll('a'))
+            .map(a => a.href)
+            .filter(href => href.endsWith('.md'))
+            .map(href => href.split('/').pop());
+
+        const posts = [];
+
+        for (const filename of links) {
+            try {
+                const postResponse = await fetch(`posts/${type}/${filename}`);
+                if (postResponse.ok) {
+                    const markdown = await postResponse.text();
+                    const post = parseMarkdown(markdown, type, filename);
+                    if (post) posts.push(post);
+                }
+            } catch (err) {
+                console.log(`Error loading ${type}/${filename}:`, err);
+            }
+        }
+
+        return posts;
+    } catch (err) {
+        console.log(`No posts found for ${type}:`, err);
+        return [];
+    }
+}
+
+// Parse Markdown with YAML Frontmatter
+function parseMarkdown(markdown, type, filename) {
+    // Match YAML frontmatter
+    const frontmatterMatch = markdown.match(/^---\n([\s\S]*?)\n---/);
+    if (!frontmatterMatch) return null;
+
+    const frontmatter = frontmatterMatch[1];
+    const content = markdown.replace(/^---\n[\s\S]*?\n---\n/, '').trim();
+
+    // Parse YAML manually (simple approach)
+    const metadata = {};
+    frontmatter.split('\n').forEach(line => {
+        const [key, ...valueParts] = line.split(':');
+        if (key && valueParts.length > 0) {
+            const value = valueParts.join(':').trim().replace(/^['"]|['"]$/g, '');
+            metadata[key.trim()] = value;
+        }
+    });
+
+    // Generate ID from filename
+    const id = filename.replace('.md', '');
+
+    return {
+        id,
+        type,
+        title: metadata.title || '',
+        date: metadata.date || new Date().toISOString().split('T')[0],
+        author: metadata.author || 'Beau Holliday',
+        image: metadata.image || '/assets/media/beauholliday.jpg',
+        cover: metadata.cover || metadata.image || '/assets/media/beauholliday.jpg',
+        excerpt: metadata.excerpt || content.substring(0, 150),
+        content
+    };
 }
 
 // Render Feed (All Posts)
-function renderFeed() {
-    const allPosts = [
-        ...postsData.poetry.map(p => ({ ...p, type: 'poetry' })),
-        ...postsData.sentiment.map(p => ({ ...p, type: 'sentiment' })),
-        ...postsData.stories.map(p => ({ ...p, type: 'stories' })),
-        ...postsData.prompts.map(p => ({ ...p, type: 'prompts' }))
-    ].sort((a, b) => new Date(b.date) - new Date(a.date));
+async function renderFeed() {
+    try {
+        const [poetry, sentiment, stories, prompts] = await Promise.all([
+            fetchMarkdownFiles('poetry'),
+            fetchMarkdownFiles('sentiment'),
+            fetchMarkdownFiles('stories'),
+            fetchMarkdownFiles('prompts')
+        ]);
 
-    if (allPosts.length === 0) {
-        return `<div class="empty-state"><p>The pages are still being written. 💌</p></div>`;
+        const allPosts = [
+            ...poetry,
+            ...sentiment,
+            ...stories,
+            ...prompts
+        ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        if (allPosts.length === 0) {
+            return `<div class="empty-state"><p>The pages are still being written. 💌</p></div>`;
+        }
+
+        return `<div class="feed">${allPosts.map(post => renderPostCard(post)).join('')}</div>`;
+    } catch (err) {
+        console.error('Error rendering feed:', err);
+        return `<div class="empty-state"><p>Error loading posts. 💌</p></div>`;
     }
-
-    return `<div class="feed">${allPosts.map(post => renderPostCard(post)).join('')}</div>`;
 }
 
 // Render Collection
-function renderCollection(type) {
-    const posts = postsData[type] || [];
-    
-    if (posts.length === 0) {
-        return `<div class="empty-state"><p>No ${type} posts yet. 💌</p></div>`;
-    }
+async function renderCollection(type) {
+    try {
+        const posts = await fetchMarkdownFiles(type);
+        
+        if (posts.length === 0) {
+            return `<div class="empty-state"><p>No ${type} posts yet. 💌</p></div>`;
+        }
 
-    const sortedPosts = [...posts].sort((a, b) => new Date(b.date) - new Date(a.date));
-    return `<div class="feed">${sortedPosts.map(post => renderPostCard({ ...post, type })).join('')}</div>`;
+        const sortedPosts = posts.sort((a, b) => new Date(b.date) - new Date(a.date));
+        return `<div class="feed">${sortedPosts.map(post => renderPostCard(post)).join('')}</div>`;
+    } catch (err) {
+        console.error('Error rendering collection:', err);
+        return `<div class="empty-state"><p>Error loading posts. 💌</p></div>`;
+    }
 }
 
 // Render Post Card
 function renderPostCard(post) {
-    const { type, id, title, date, author, image, excerpt, content, cover, submissions } = post;
+    const { type, id, title, date, author, image, excerpt, content, cover } = post;
     const dateStr = new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
     if (type === 'poetry') {
@@ -142,8 +174,8 @@ function renderPostCard(post) {
             <div class="card poetry" data-post-id="${id}" data-type="poetry">
                 <div class="card-content">
                     <div class="card-header">📝 Poetry</div>
-                    ${title ? `<h2>${title}</h2>` : ''}
-                    <div class="poem-text">${escapeHtml(content)}</div>
+                    ${title ? `<h2>${escapeHtml(title)}</h2>` : ''}
+                    <div class="poem-text">${escapeHtml(content).replace(/\n/g, '<br>')}</div>
                     <div class="card-footer">
                         <span class="timestamp">${dateStr}</span>
                         <div class="action-buttons">
@@ -186,7 +218,7 @@ function renderPostCard(post) {
         return `
             <div class="card story" data-post-id="${id}" data-type="stories">
                 <div class="story-cover">
-                    <img src="${cover}" alt="${title}">
+                    <img src="${cover}" alt="${escapeHtml(title)}">
                 </div>
                 <div class="story-info">
                     <div class="card-header">📖 Short Story</div>
@@ -216,7 +248,7 @@ function renderPostCard(post) {
                 <div class="prompt-overlay"></div>
                 <div class="prompt-content">
                     <h2 class="prompt-title">${escapeHtml(title)}</h2>
-                    <p class="prompt-count">${submissions} submission${submissions !== 1 ? 's' : ''}</p>
+                    <p class="prompt-count">Submissions coming soon</p>
                     <button class="prompt-link view-prompt-btn">View Prompt</button>
                 </div>
             </div>
@@ -225,8 +257,7 @@ function renderPostCard(post) {
 }
 
 // Render Full Story Page
-function renderStoryPage(postId) {
-    const post = postsData.stories.find(p => p.id === postId);
+function renderStoryPage(postId, post) {
     if (!post) return '';
 
     const dateStr = new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
@@ -239,8 +270,8 @@ function renderStoryPage(postId) {
                     <h2 class="story-title">${escapeHtml(post.title)}</h2>
                     
                     <div style="background: white; border: 2px solid #8b7355; padding: 2rem; margin: 2rem 0; position: relative;">
-                        <div style="position: relative; z-index: 2; font-size: 1rem; line-height: 1.8; color: #444;">
-                            ${escapeHtml(post.content).replace(/\n\n/g, '</p><p>')}
+                        <div style="position: relative; z-index: 2; font-size: 1rem; line-height: 1.8; color: #444; white-space: pre-wrap;">
+                            ${escapeHtml(post.content)}
                         </div>
                     </div>
                     
@@ -257,8 +288,7 @@ function renderStoryPage(postId) {
 }
 
 // Render Prompt Page
-function renderPromptPage(postId) {
-    const post = postsData.prompts.find(p => p.id === postId);
+function renderPromptPage(postId, post) {
     if (!post) return '';
 
     return `
@@ -268,14 +298,14 @@ function renderPromptPage(postId) {
                 <div class="prompt-overlay"></div>
                 <div class="prompt-content">
                     <h2 class="prompt-title">${escapeHtml(post.title)}</h2>
-                    <p class="prompt-count">${post.submissions} submission${post.submissions !== 1 ? 's' : ''}</p>
+                    <p class="prompt-count">Submissions coming soon</p>
                 </div>
             </div>
 
             <div class="card" style="border: 2px solid #8b7355; margin-bottom: 2rem;">
                 <div class="card-content">
                     <h3 class="section-title">The Prompt</h3>
-                    <div style="font-size: 1rem; line-height: 1.8; color: #444;">
+                    <div style="font-size: 1rem; line-height: 1.8; color: #444; white-space: pre-wrap;">
                         ${escapeHtml(post.content)}
                     </div>
                 </div>
@@ -322,7 +352,7 @@ function renderAbout() {
                         Beau Holliday is an old soul from the Southwest, published independently, pursuing shamelessness through song, poem, and prose.
                     </p>
 
-                    <img src="/assets/media/profile-image.jpg" alt="Beau Holliday" class="profile-image" style="display: none;">
+                    <img src="/assets/media/profile-image.jpg" alt="Beau Holliday" class="profile-image" onerror="this.style.display='none'">
 
                     <div class="bio-highlight">
                         An American musician, writer, romance author, and poet—Beau's presence weaves across web and social media with an obsession for the romantic and sensual. Drawing from the psychological and spiritual aspects of sex, the history and mysticism of desire, these explorations manifest in pseudo-fictional fantasies, academic pursuits, and philosophical ponderings within unique and intriguing artistic endeavors, both online and off.
@@ -401,11 +431,16 @@ function setupPostInteractions() {
 
     // Read Full Story buttons
     document.querySelectorAll('.read-story-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
             const card = e.target.closest('.card');
             const postId = card.dataset.postId;
+            
+            // Find the full post data
+            const posts = await fetchMarkdownFiles('stories');
+            const post = posts.find(p => p.id === postId);
+            
             const contentEl = document.getElementById('content');
-            contentEl.innerHTML = renderStoryPage(postId);
+            contentEl.innerHTML = renderStoryPage(postId, post);
             setupPostInteractions();
             window.scrollTo(0, 0);
         });
@@ -413,11 +448,16 @@ function setupPostInteractions() {
 
     // View Prompt buttons
     document.querySelectorAll('.view-prompt-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
             const card = e.target.closest('.card');
             const postId = card.dataset.postId;
+            
+            // Find the full post data
+            const posts = await fetchMarkdownFiles('prompts');
+            const post = posts.find(p => p.id === postId);
+            
             const contentEl = document.getElementById('content');
-            contentEl.innerHTML = renderPromptPage(postId);
+            contentEl.innerHTML = renderPromptPage(postId, post);
             setupPostInteractions();
             window.scrollTo(0, 0);
         });
@@ -440,7 +480,7 @@ function updateMetaTags(title, description, image) {
     document.querySelector('meta[name="twitter:description"]').setAttribute('content', description);
     document.querySelector('meta[name="twitter:image"]').setAttribute('content', image);
 }
-
+// I love you 🌹
 // Escape HTML
 function escapeHtml(text) {
     const map = {
