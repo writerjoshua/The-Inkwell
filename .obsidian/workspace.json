@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "assets/posts/library.md",
+                "file": "assets/posts/sentiment/sentiment template.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "library"
+              "title": "sentiment template"
             }
           }
         ]
@@ -74,8 +74,7 @@
               "title": "Bookmarks"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "horizontal",
@@ -184,8 +183,11 @@
       "bases:Create new base": false
     }
   },
-  "active": "ba8109703f1ad6a0",
+  "active": "7a528a20c893f3c1",
   "lastOpenFiles": [
+    "assets/posts/stories/Story Template.md",
+    "assets/posts/library.md",
+    "Untitled.base",
     "assets/Library.md",
     "about-beau.md",
     "sentiment.md",
@@ -203,7 +205,6 @@
     "_config 1.yml",
     "Untitled",
     "_config.yml",
-    "_layouts",
-    "assets/_profile"
+    "_layouts"
   ]
 }
