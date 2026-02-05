@@ -1,6 +1,6 @@
 ---
-Title: Where Is She Going?
-Author: Beau Holliday
+Title: where is she going?
+Author: beau holliday
 Date: 2026-04-02
 tags:
   - poetry
