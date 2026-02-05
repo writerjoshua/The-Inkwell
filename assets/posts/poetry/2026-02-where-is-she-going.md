@@ -2,9 +2,8 @@
 Title: where is she going?
 Author: beau holliday
 Date: 2026-04-02
-tags:
-  - poetry
 ---
+
 And in such a hurry
 I watch from her bank
 Smooth stones under foot
