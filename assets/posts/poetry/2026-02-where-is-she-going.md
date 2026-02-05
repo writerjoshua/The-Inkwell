@@ -1,4 +1,3 @@
-
 ---
 title: Where Is She Going?
 author: Beau Holliday
