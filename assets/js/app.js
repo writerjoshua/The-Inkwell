@@ -4,7 +4,7 @@ const BASE_URL = '/The-Inkwell';
 const GITHUB_OWNER = 'writerjoshua';
 const GITHUB_REPO = 'The-Inkwell';
 const GITHUB_API = 'https://api.github.com/repos';
-const POSTS_PATH = 'assets/posts';
+const POSTS_PATH = 'assets/posts/';
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
