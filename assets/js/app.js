@@ -162,7 +162,7 @@ async function fetchMarkdownFiles(type) {
 // Fetch markdown page
 async function fetchMarkdownPage(filename) {
     try {
-        const response = await fetch(`${BASE_URL}/assets/posts/${filename}.md`);
+        const response = await fetch(`${BASE_URL}/assets/posts/${filename}/${filename}.md`);
         if (!response.ok) {
             return `<div class="empty-state"><p>Page not found. 💌</p></div>`;
         }
@@ -318,7 +318,7 @@ function renderHero() {
 // Render Library Preview
 async function renderLibraryPreview() {
     try {
-        const response = await fetch(`${BASE_URL}/assets/posts/library.md`);
+        const response = await fetch(`${BASE_URL}/assets/posts/library/library.md`);
         if (!response.ok) return '';
 
         const markdown = await response.text();
