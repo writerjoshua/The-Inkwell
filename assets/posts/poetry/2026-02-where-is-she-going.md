@@ -1,7 +1,7 @@
 
 ---
-Title: where is she going?
-Author: beau holliday
+Title: Where Is She Going?
+Author: Beau Holliday
 Date: 2026-04-02
 ---
 
