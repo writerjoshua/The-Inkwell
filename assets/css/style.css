@@ -285,7 +285,7 @@ body::before {
 
 /* Hero Section */
 .hero {
-    background: linear-gradient(135deg, rgba(139, 115, 85, 0.9), rgba(201, 104, 90, 0.9)), url('/assets/media/beauholliday.jpg');
+    background: linear-gradient(135deg, rgba(139, 115, 85, 0.9), rgba(201, 104, 90, 0.9)), url('assets/media/beauholliday.jpg');
     background-size: cover;
     background-position: center;
     color: white;
