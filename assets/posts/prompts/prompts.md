@@ -1,4 +1,4 @@
 ---
-title: Prompts
+title: prompts
 ---
 Prompts
