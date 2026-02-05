@@ -1,10 +1,16 @@
 // The Inkwell — SPA Application with GitHub API Auto-Discovery
+// CRITICAL FIXES APPLIED
 
 const BASE_URL = '/the-inkwell';
 const GITHUB_OWNER = 'writerjoshua';
 const GITHUB_REPO = 'the-inkwell';
 const GITHUB_API = 'https://api.github.com/repos';
 const POSTS_PATH = 'assets/posts';
+const GITHUB_TOKEN = ''; // Set to your token to avoid rate limiting
+
+// Post cache to avoid re-fetching
+const postCache = {};
+let currentSourcePage = 'home';
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
@@ -60,8 +66,15 @@ function setupNavigation() {
 
 // Load Page
 function loadPage(page) {
-    document.querySelectorAll('.bottom-nav-btn, .nav-link').forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
+    // FIX #2: Clear active state from both navs separately
+    document.querySelectorAll('.bottom-nav-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.nav-link').forEach(btn => btn.classList.remove('active'));
+    
+    // Set active on ALL matching elements
+    document.querySelectorAll(`[data-page="${page}"]`).forEach(el => el.classList.add('active'));
+
+    // Store current source page for back navigation (FIX #5)
+    currentSourcePage = page;
 
     const contentEl = document.getElementById('content');
     contentEl.innerHTML = '<div class="loading">Loading...</div>';
@@ -72,8 +85,7 @@ function loadPage(page) {
             setupPostInteractions();
             window.scrollTo(0, 0);
         }).catch(err => {
-            console.error('Error loading home:', err);
-            contentEl.innerHTML = '<div class="empty-state"><p>Error loading home. 💌</p></div>';
+            handleError(contentEl, err, 'Error loading home');
         });
     } else if (page === 'everything') {
         renderFeed().then(html => {
@@ -81,8 +93,7 @@ function loadPage(page) {
             setupPostInteractions();
             window.scrollTo(0, 0);
         }).catch(err => {
-            console.error('Error loading feed:', err);
-            contentEl.innerHTML = '<div class="empty-state"><p>Error loading posts. 💌</p></div>';
+            handleError(contentEl, err, 'Error loading posts');
         });
     } else if (page === 'about-beau' || page === 'library') {
         renderMarkdownPage(page === 'about-beau' ? 'about' : 'library').then(html => {
@@ -90,8 +101,7 @@ function loadPage(page) {
             setupPostInteractions();
             window.scrollTo(0, 0);
         }).catch(err => {
-            console.error('Error loading page:', err);
-            contentEl.innerHTML = '<div class="empty-state"><p>Error loading page. 💌</p></div>';
+            handleError(contentEl, err, 'Error loading page');
         });
     } else {
         renderCollection(page).then(html => {
@@ -99,20 +109,42 @@ function loadPage(page) {
             setupPostInteractions();
             window.scrollTo(0, 0);
         }).catch(err => {
-            console.error('Error loading collection:', err);
-            contentEl.innerHTML = '<div class="empty-state"><p>Error loading posts. 💌</p></div>';
+            handleError(contentEl, err, 'Error loading posts');
         });
     }
+}
+
+// Error handling with more specific messages
+function handleError(contentEl, err, defaultMsg) {
+    console.error(defaultMsg, err);
+    let msg = defaultMsg + '. 💌';
+    
+    if (err.message?.includes('rate limit') || err.status === 403) {
+        msg = 'Too many requests. Please try again in a moment. 💌';
+    } else if (err.message?.includes('network') || err.message?.includes('Failed to fetch')) {
+        msg = 'Network connection error. Please check your connection. 💌';
+    }
+    
+    contentEl.innerHTML = `<div class="empty-state"><p>${msg}</p></div>`;
 }
 
 // Fetch files from GitHub API
 async function fetchFilesFromGitHub(path) {
     try {
+        const headers = GITHUB_TOKEN ? { 'Authorization': `token ${GITHUB_TOKEN}` } : {};
         const url = `${GITHUB_API}/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${POSTS_PATH}/${path}`;
-        const response = await fetch(url);
+        const response = await fetch(url, { headers });
         
+        // FIX #3: Check for rate limiting
+        if (response.status === 403) {
+            console.error('GitHub API rate limit exceeded');
+            const error = new Error('GitHub API rate limit exceeded');
+            error.status = 403;
+            throw error;
+        }
+
         if (!response.ok) {
-            console.log(`GitHub API: ${path} not found (${response.status})`);
+            console.debug(`GitHub API: ${path} not found (${response.status})`); // FIX #13: Use debug instead of log
             return [];
         }
 
@@ -123,39 +155,47 @@ async function fetchFilesFromGitHub(path) {
             : [];
     } catch (err) {
         console.error(`Error fetching from GitHub API for ${path}:`, err);
-        return [];
+        throw err;
     }
 }
 
-// Fetch markdown files
+// Fetch markdown files with caching
 async function fetchMarkdownFiles(type) {
+    // FIX #4: Check cache first
+    if (postCache[type]) {
+        return postCache[type];
+    }
+
     try {
         const mdFiles = await fetchFilesFromGitHub(type);
 
-if (mdFiles.length === 0) {
-    console.log(`No markdown files found in ${POSTS_PATH}/${type}`);
-    return [];
-}
-
-const posts = [];
-
-for (const file of mdFiles) {
-    try {
-        const response = await fetch(`https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/assets/posts/${type}/${file.name}`);
-        if (response.ok) {
-            const markdown = await response.text();
-            const post = parseMarkdown(markdown, type, file.name);
-            if (post) posts.push(post);
+        if (mdFiles.length === 0) {
+            console.log(`No markdown files found in ${POSTS_PATH}/${type}`);
+            postCache[type] = [];
+            return [];
         }
-    } catch (err) {
-        console.log(`Error loading ${type}/${file.name}:`, err);
-    }
-}
 
-return posts;
+        const posts = [];
+
+        for (const file of mdFiles) {
+            try {
+                const response = await fetch(`https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/assets/posts/${type}/${file.name}`);
+                if (response.ok) {
+                    const markdown = await response.text();
+                    const post = parseMarkdown(markdown, type, file.name);
+                    if (post) posts.push(post);
+                }
+            } catch (err) {
+                console.log(`Error loading ${type}/${file.name}:`, err);
+            }
+        }
+
+        // Store in cache
+        postCache[type] = posts;
+        return posts;
     } catch (err) {
         console.log(`Error in fetchMarkdownFiles for ${type}:`, err);
-        return [];
+        throw err;
     }
 }
 
@@ -172,9 +212,9 @@ async function fetchMarkdownPage(filename) {
 
         return `
             <div style="max-width: 900px; margin: 0 auto;">
-                ${metadata.title ? `<h1 style="font-family: 'Playfair Display', serif; font-size: 2rem; margin-bottom: 2rem; color: #3d2817; text-align: center;">${escapeHtml(metadata.title)}</h1>` : ''}
-                <div style="background: white; border: 2px solid #8b7355; padding: 2rem; position: relative; box-shadow: 2px 2px 8px rgba(0,0,0,.08);">
-                    <div style="position: relative; z-index: 2; font-size: 1rem; line-height: 1.8; color: #444;">
+                ${metadata.title ? `<h1 class="page-title">${escapeHtml(metadata.title)}</h1>` : ''}
+                <div class="page-content">
+                    <div class="page-body">
                         ${parseContentMarkdown(content)}
                     </div>
                 </div>
@@ -250,16 +290,16 @@ function parsePageMarkdown(markdown) {
 function parseContentMarkdown(markdown) {
     let html = escapeHtml(markdown);
 
-    html = html.replace(/^### (.*?)$/gm, '<h3 style="font-family: \'Playfair Display\', serif; font-size: 1.3rem; margin: 1.5rem 0 0.5rem 0; color: #3d2817;">$1</h3>');
-    html = html.replace(/^## (.*?)$/gm, '<h2 style="font-family: \'Playfair Display\', serif; font-size: 1.6rem; margin: 2rem 0 1rem 0; color: #3d2817;">$1</h2>');
-    html = html.replace(/^# (.*?)$/gm, '<h1 style="font-family: \'Playfair Display\', serif; font-size: 2rem; margin: 2rem 0 1rem 0; color: #3d2817;">$1</h1>');
+    html = html.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
 
     html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" style="color: #c9685a; text-decoration: underline;">$1</a>');
+    html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>');
 
-    html = html.replace(/\n\n/g, '</p><p style="margin: 1rem 0;">');
-    html = '<p style="margin: 1rem 0;">' + html + '</p>';
+    html = html.replace(/\n\n/g, '</p><p>');
+    html = '<p>' + html + '</p>';
     html = html.replace(/<p><\/p>/g, '');
 
     return html;
@@ -287,8 +327,8 @@ async function renderHome() {
         return `
             ${renderHero()}
 
-            <div style="margin-top: 3rem;">
-                <h2 style="font-family: 'Playfair Display', serif; font-size: 1.8rem; margin-bottom: 1.5rem; color: #3d2817; border-bottom: 2px dashed #8b7355; padding-bottom: 0.8rem; letter-spacing: 1px;">Latest Writings</h2>
+            <div class="latest-section">
+                <h2 class="section-title">Latest Writings</h2>
                 <div class="feed">
                     ${latestPosts.length > 0 ? latestPosts.map(post => renderPostCard(post)).join('') : '<div class="empty-state"><p>No posts yet. 💌</p></div>'}
                 </div>
@@ -298,7 +338,7 @@ async function renderHome() {
         `;
     } catch (err) {
         console.error('Error rendering home:', err);
-        return `<div class="empty-state"><p>Error loading home. 💌</p></div>`;
+        throw err;
     }
 }
 
@@ -309,7 +349,7 @@ function renderHero() {
             <div class="hero-content">
                 <h2>The Inkwell</h2>
                 <p>Essays in Romance & Reverie</p>
-                <p style="margin-top: 1.5rem; font-size: 1rem;">Poetry and prose exploring desire, vulnerability, and the spaces between words.</p>
+                <p class="hero-tagline">Poetry and prose exploring desire, vulnerability, and the spaces between words.</p>
             </div>
         </div>
     `;
@@ -326,12 +366,12 @@ async function renderLibraryPreview() {
         const preview = content.substring(0, 300) + '...';
 
         return `
-            <div style="margin-top: 3rem; background: linear-gradient(135deg, #fffbf5 0%, #fef5e7 100%); border: 2px solid #8b7355; padding: 2rem; box-shadow: 2px 2px 8px rgba(0,0,0,.08);">
-                <h2 style="font-family: 'Playfair Display', serif; font-size: 1.8rem; margin-bottom: 1rem; color: #3d2817; letter-spacing: 1px;">The Library</h2>
-                <p style="font-size: 1rem; line-height: 1.8; margin-bottom: 1.5rem; color: #444;">
+            <div class="library-preview">
+                <h2 class="section-title">The Library</h2>
+                <p>
                     ${preview}
                 </p>
-                <button class="action-btn" style="border: 2px solid #8b7355; padding: 0.8rem 1.5rem; font-size: 0.9rem;" onclick="loadPage('library')">Explore the Library</button>
+                <button class="action-btn" onclick="loadPage('library')">Explore the Library</button>
             </div>
         `;
     } catch (err) {
@@ -363,7 +403,7 @@ async function renderFeed() {
         return `<div class="feed">${allPosts.map(post => renderPostCard(post)).join('')}</div>`;
     } catch (err) {
         console.error('Error rendering feed:', err);
-        return `<div class="empty-state"><p>Error loading posts. 💌</p></div>`;
+        throw err;
     }
 }
 
@@ -380,7 +420,7 @@ async function renderCollection(type) {
         return `<div class="feed">${sortedPosts.map(post => renderPostCard(post)).join('')}</div>`;
     } catch (err) {
         console.error('Error rendering collection:', err);
-        return `<div class="empty-state"><p>Error loading posts. 💌</p></div>`;
+        throw err;
     }
 }
 
@@ -438,7 +478,7 @@ function renderPostCard(post) {
         return `
             <div class="card story" data-post-id="${id}" data-type="stories">
                 <div class="story-cover">
-                    <img src="${BASE_URL}${cover}" alt="${escapeHtml(title)}">
+                    <img src="${BASE_URL}${cover}" alt="${escapeHtml(title)}" loading="lazy" onerror="this.src='/assets/media/placeholder.jpg'">
                 </div>
                 <div class="story-info">
                     <div class="card-header">📖 Short Story</div>
@@ -477,20 +517,20 @@ function renderPostCard(post) {
 }
 
 // Render Story Page
-function renderStoryPage(postId, post) {
+function renderStoryPage(post) {
     if (!post) return '';
 
     const dateStr = new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
     return `
-        <div style="max-width: 900px; margin: 0 auto;">
-            <div class="card story" style="border-left: 6px solid #8b7355; display: flex; flex-direction: column;">
+        <div class="story-page">
+            <div class="card story">
                 <div class="card-content">
                     <div class="card-header">📖 Short Story</div>
                     <h2 class="story-title">${escapeHtml(post.title)}</h2>
                     
-                    <div style="background: white; border: 2px solid #8b7355; padding: 2rem; margin: 2rem 0; position: relative;">
-                        <div style="position: relative; z-index: 2; font-size: 1rem; line-height: 1.8; color: #444; white-space: pre-wrap;">
+                    <div class="story-body">
+                        <div class="story-text">
                             ${escapeHtml(post.content)}
                         </div>
                     </div>
@@ -498,7 +538,7 @@ function renderStoryPage(postId, post) {
                     <div class="card-footer">
                         <span class="timestamp">${dateStr}</span>
                         <div class="action-buttons">
-                            <button class="action-btn back-to-feed">Back to Stories</button>
+                            <button class="action-btn back-to-feed">Back to ${currentSourcePage === 'stories' ? 'Stories' : 'Feed'}</button>
                         </div>
                     </div>
                 </div>
@@ -508,12 +548,12 @@ function renderStoryPage(postId, post) {
 }
 
 // Render Prompt Page
-function renderPromptPage(postId, post) {
+function renderPromptPage(post) {
     if (!post) return '';
 
     return `
-        <div style="max-width: 900px; margin: 0 auto;">
-            <div class="card prompt" style="min-height: auto; margin-bottom: 2rem;">
+        <div class="prompt-page">
+            <div class="card prompt">
                 <div class="prompt-background" style="background-image: url('${BASE_URL}${post.image}');"></div>
                 <div class="prompt-overlay"></div>
                 <div class="prompt-content">
@@ -522,101 +562,146 @@ function renderPromptPage(postId, post) {
                 </div>
             </div>
 
-            <div class="card" style="border: 2px solid #8b7355; margin-bottom: 2rem;">
+            <div class="card">
                 <div class="card-content">
                     <h3 class="section-title">The Prompt</h3>
-                    <div style="font-size: 1rem; line-height: 1.8; color: #444; white-space: pre-wrap;">
+                    <div class="prompt-text">
                         ${escapeHtml(post.content)}
                     </div>
                 </div>
             </div>
 
-            <div class="card" style="border: 2px solid #8b7355; background: linear-gradient(135deg, #fffbf5 0%, #fef5e7 100%);;">
+            <div class="card prompt-response">
                 <div class="card-content">
                     <h3 class="section-title">Share Your Response</h3>
-                    <form style="display: flex; flex-direction: column; gap: 1rem;">
+                    <form id="prompt-form">
                         <div>
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; letter-spacing: 1px; font-size: 0.9rem;">Your Name (optional)</label>
-                            <input type="text" placeholder="Leave blank for anonymous" style="width: 100%; padding: 0.8rem; border: 1px solid #8b7355; font-family: 'Courier Prime', monospace; background: white;">
+                            <label>Your Name (optional)</label>
+                            <input type="text" placeholder="Leave blank for anonymous">
                         </div>
                         <div>
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; letter-spacing: 1px; font-size: 0.9rem;">Your Response</label>
-                            <textarea placeholder="Write your response here..." style="width: 100%; padding: 1rem; border: 1px solid #8b7355; font-family: 'Courier Prime', monospace; min-height: 200px; resize: vertical; background: white;"></textarea>
+                            <label>Your Response</label>
+                            <textarea placeholder="Write your response here..." required></textarea>
                         </div>
                         <div>
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; letter-spacing: 1px; font-size: 0.9rem;">Email (for your reference, not published)</label>
-                            <input type="email" placeholder="your@email.com" style="width: 100%; padding: 0.8rem; border: 1px solid #8b7355; font-family: 'Courier Prime', monospace; background: white;">
+                            <label>Email (for your reference, not published)</label>
+                            <input type="email" placeholder="your@email.com">
                         </div>
-                        <button type="submit" style="background: #8b7355; color: white; border: none; padding: 0.8rem 1.5rem; font-family: 'Courier Prime', monospace; font-size: 0.9rem; cursor: pointer; letter-spacing: 1px; transition: all 0.3s ease; align-self: flex-start;">Submit Response</button>
+                        <button type="submit">Submit Response</button>
                     </form>
-                    <p style="margin-top: 1rem; font-size: 0.85rem; color: #888; font-style: italic;">
+                    <p class="form-note">
                         💌 Your submission helps shape this creative conversation. Thank you for participating.
                     </p>
                 </div>
             </div>
 
-            <button class="back-to-feed" style="margin-top: 2rem; background: transparent; border: none; color: #8b7355; text-decoration: underline; cursor: pointer; font-family: 'Courier Prime', monospace; font-size: 0.95rem;">← Back to Prompts</button>
+            <button class="back-to-feed">← Back to ${currentSourcePage === 'prompts' ? 'Prompts' : 'Feed'}</button>
         </div>
     `;
 }
 
 // Setup Post Interactions
 function setupPostInteractions() {
+    const shareStates = new Map();
+
+    // Share button toggle
     document.querySelectorAll('.share-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const card = e.target.closest('.card');
-            const preview = card.querySelector('.share-preview');
-            if (preview) {
-                preview.classList.toggle('visible');
+            const preview = card?.querySelector('.share-preview');
+            if (!preview) return;
+            
+            const key = card.dataset.postId;
+            const isVisible = shareStates.get(key);
+            
+            if (isVisible) {
+                preview.classList.remove('visible');
+                shareStates.set(key, false);
+            } else {
+                preview.classList.add('visible');
+                shareStates.set(key, true);
             }
         });
     });
 
+    // Read story button
     document.querySelectorAll('.read-story-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const card = e.target.closest('.card');
-            const postId = card.dataset.postId;
+            const postId = card?.dataset.postId;
+            
+            if (!postId) return;
             
             const posts = await fetchMarkdownFiles('stories');
             const post = posts.find(p => p.id === postId);
             
+            // FIX #9: Check if post exists
+            if (!post) {
+                document.getElementById('content').innerHTML = '<div class="empty-state"><p>Post not found. 💌</p></div>';
+                return;
+            }
+            
             const contentEl = document.getElementById('content');
-            contentEl.innerHTML = renderStoryPage(postId, post);
+            contentEl.innerHTML = renderStoryPage(post);
             setupPostInteractions();
             window.scrollTo(0, 0);
         });
     });
 
+    // View prompt button
     document.querySelectorAll('.view-prompt-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const card = e.target.closest('.card');
-            const postId = card.dataset.postId;
+            const postId = card?.dataset.postId;
+            
+            if (!postId) return;
             
             const posts = await fetchMarkdownFiles('prompts');
             const post = posts.find(p => p.id === postId);
             
+            // FIX #9: Check if post exists
+            if (!post) {
+                document.getElementById('content').innerHTML = '<div class="empty-state"><p>Post not found. 💌</p></div>';
+                return;
+            }
+            
             const contentEl = document.getElementById('content');
-            contentEl.innerHTML = renderPromptPage(postId, post);
+            contentEl.innerHTML = renderPromptPage(post);
             setupPostInteractions();
             window.scrollTo(0, 0);
         });
     });
 
+    // Back to feed button - FIX #5: Use currentSourcePage
     document.querySelectorAll('.back-to-feed').forEach(btn => {
         btn.addEventListener('click', () => {
-            loadPage('everything');
+            loadPage(currentSourcePage);
         });
     });
+
+    // FIX #12: Form submission handler
+    const promptForm = document.getElementById('prompt-form');
+    if (promptForm) {
+        promptForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(promptForm);
+            // TODO: Send to your backend/email service
+            
+            alert('Thank you for your response! 💌');
+            loadPage(currentSourcePage);
+        });
+    }
 }
 
 // Update Meta Tags
 function updateMetaTags(title, description, image) {
-    document.querySelector('meta[property="og:title"]').setAttribute('content', title);
-    document.querySelector('meta[property="og:description"]').setAttribute('content', description);
-    document.querySelector('meta[property="og:image"]').setAttribute('content', image);
-    document.querySelector('meta[name="twitter:title"]').setAttribute('content', title);
-    document.querySelector('meta[name="twitter:description"]').setAttribute('content', description);
-    document.querySelector('meta[name="twitter:image"]').setAttribute('content', image);
+    document.querySelector('meta[property="og:title"]')?.setAttribute('content', title);
+    document.querySelector('meta[property="og:description"]')?.setAttribute('content', description);
+    document.querySelector('meta[property="og:image"]')?.setAttribute('content', image);
+    document.querySelector('meta[name="twitter:title"]')?.setAttribute('content', title);
+    document.querySelector('meta[name="twitter:description"]')?.setAttribute('content', description);
+    document.querySelector('meta[name="twitter:image"]')?.setAttribute('content', image);
 }
 
 // Escape HTML
