@@ -1,7 +1,7 @@
 // The Inkwell — SPA Application with GitHub API Auto-Discovery
 // CRITICAL FIXES APPLIED
 
-const BASE_URL = '/the-inkwell';
+const BASE_URL = '/the-inkwell/';
 const GITHUB_OWNER = 'writerjoshua';
 const GITHUB_REPO = 'the-inkwell';
 const GITHUB_API = 'https://api.github.com/repos';
