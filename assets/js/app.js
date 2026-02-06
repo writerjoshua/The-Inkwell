@@ -539,6 +539,7 @@ function renderStoryPage(post) {
                         <span class="timestamp">${dateStr}</span>
                         <div class="action-buttons">
                             <button class="action-btn back-to-feed">Back to ${currentSourcePage === 'stories' ? 'Stories' : 'Feed'}</button>
+                            <button class="action-btn share-btn">Share</button>
                         </div>
                     </div>
                 </div>
@@ -604,46 +605,52 @@ function renderPromptPage(post) {
 function setupPostInteractions() {
     const shareStates = new Map();
 
-    // Share button: use native share where available, otherwise toggle preview
+    // Share button: use native share where available, otherwise copy to clipboard
     document.querySelectorAll('.share-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const card = e.target.closest('.card');
-            const preview = card?.querySelector('.share-preview');
-            if (!preview) return;
+            if (!card) return;
 
-            // Collect share text from the preview meta lines
-            const metaEls = Array.from(preview.querySelectorAll('.share-preview-meta'));
-            const shareText = metaEls.map(el => el.textContent.trim()).join('\n');
+            // Prefer structured preview meta if present
+            const preview = card.querySelector('.share-preview');
+            const metaEls = preview ? Array.from(preview.querySelectorAll('.share-preview-meta')) : [];
+            let shareText = metaEls.length ? metaEls.map(el => el.textContent.trim()).join('\n') : '';
+
+            // Fallback to card content snippets
+            if (!shareText) {
+                const titleEl = card.querySelector('h2, .story-title, .prompt-title');
+                const bodyEl = card.querySelector('.poem-text, .sentiment-text, .story-excerpt, .story-text');
+                shareText = (titleEl ? titleEl.textContent.trim() + '\n' : '') + (bodyEl ? bodyEl.textContent.trim().substring(0, 240) : '');
+            }
+
             const shareTitle = document.title || 'The Inkwell';
             const shareUrl = window.location.href;
 
             if (navigator.share) {
                 try {
-                    await navigator.share({
-                        title: shareTitle,
-                        text: shareText,
-                        url: shareUrl
-                    });
-                    // Optionally give visual feedback by hiding preview
-                    preview.classList.remove('visible');
-                    shareStates.set(card.dataset.postId, false);
+                    await navigator.share({ title: shareTitle, text: shareText, url: shareUrl });
+                    return;
                 } catch (err) {
-                    // If user cancels or share fails, fallback to showing preview
-                    preview.classList.add('visible');
-                    shareStates.set(card.dataset.postId, true);
-                }
-            } else {
-                // Fallback: toggle the inline preview (existing behavior)
-                const key = card.dataset.postId;
-                const isVisible = shareStates.get(key);
-                if (isVisible) {
-                    preview.classList.remove('visible');
-                    shareStates.set(key, false);
-                } else {
-                    preview.classList.add('visible');
-                    shareStates.set(key, true);
+                    // If share fails or is cancelled, fall through to clipboard fallback
                 }
             }
+
+            const toCopy = shareText ? `${shareText}\n${shareUrl}` : shareUrl;
+
+            // Try navigator.clipboard then fallback to prompt
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                try {
+                    await navigator.clipboard.writeText(toCopy);
+                    // small visual confirmation
+                    alert('Share text copied to clipboard.');
+                    return;
+                } catch (err) {
+                    // continue to prompt fallback
+                }
+            }
+
+            // Final fallback: show prompt with text to copy
+            window.prompt('Copy the text below to share:', toCopy);
         });
     });
 
