@@ -442,11 +442,6 @@ function renderPostCard(post) {
                             <button class="action-btn share-btn">Share</button>
                         </div>
                     </div>
-                    <div class="share-preview">
-                        <div class="share-preview-meta"><strong>The Inkwell</strong> — Poetry</div>
-                        ${title ? `<div class="share-preview-meta">"${escapeHtml(title)}"</div>` : ''}
-                        <div class="share-preview-meta">💌 Poetry and Prose by Beau Holliday</div>
-                    </div>
                 </div>
             </div>
         `;
@@ -463,11 +458,6 @@ function renderPostCard(post) {
                         <div class="action-buttons">
                             <button class="action-btn share-btn">Share</button>
                         </div>
-                    </div>
-                    <div class="share-preview">
-                        <div class="share-preview-meta"><strong>The Inkwell</strong> — Sentiment</div>
-                        <div class="share-preview-meta">"${escapeHtml(content.substring(0, 60))}..."</div>
-                        <div class="share-preview-meta">💌 Poetry and Prose by Beau Holliday</div>
                     </div>
                 </div>
             </div>
@@ -490,11 +480,6 @@ function renderPostCard(post) {
                             <button class="action-btn read-story-btn">Read Full Story</button>
                             <button class="action-btn share-btn">Share</button>
                         </div>
-                    </div>
-                    <div class="share-preview">
-                        <div class="share-preview-meta"><strong>The Inkwell</strong> — Story</div>
-                        <div class="share-preview-meta">"${escapeHtml(title)}"</div>
-                        <div class="share-preview-meta">💌 Poetry and Prose by Beau Holliday</div>
                     </div>
                 </div>
             </div>
