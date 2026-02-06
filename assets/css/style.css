@@ -1,12 +1,12 @@
 /* The Inkwell — Complete Stylesheet with Side Navigation */
 
+@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Playfair+Display:wght@400;700&display=swap');
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
-
-@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Playfair+Display:wght@400;700&display=swap');
 
 /* CSS Variables */
 :root {
