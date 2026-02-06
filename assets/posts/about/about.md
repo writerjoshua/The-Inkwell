@@ -1,7 +1,7 @@
 ---
 title: About Beau
 author: Beau Holliday
-image: assets/media/readbh-banner.jpeg
+image: /assets/media/readbh-banner.jpeg
 
 ---
 
