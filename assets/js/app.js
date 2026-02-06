@@ -604,22 +604,45 @@ function renderPromptPage(post) {
 function setupPostInteractions() {
     const shareStates = new Map();
 
-    // Share button toggle
+    // Share button: use native share where available, otherwise toggle preview
     document.querySelectorAll('.share-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
             const card = e.target.closest('.card');
             const preview = card?.querySelector('.share-preview');
             if (!preview) return;
-            
-            const key = card.dataset.postId;
-            const isVisible = shareStates.get(key);
-            
-            if (isVisible) {
-                preview.classList.remove('visible');
-                shareStates.set(key, false);
+
+            // Collect share text from the preview meta lines
+            const metaEls = Array.from(preview.querySelectorAll('.share-preview-meta'));
+            const shareText = metaEls.map(el => el.textContent.trim()).join('\n');
+            const shareTitle = document.title || 'The Inkwell';
+            const shareUrl = window.location.href;
+
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: shareTitle,
+                        text: shareText,
+                        url: shareUrl
+                    });
+                    // Optionally give visual feedback by hiding preview
+                    preview.classList.remove('visible');
+                    shareStates.set(card.dataset.postId, false);
+                } catch (err) {
+                    // If user cancels or share fails, fallback to showing preview
+                    preview.classList.add('visible');
+                    shareStates.set(card.dataset.postId, true);
+                }
             } else {
-                preview.classList.add('visible');
-                shareStates.set(key, true);
+                // Fallback: toggle the inline preview (existing behavior)
+                const key = card.dataset.postId;
+                const isVisible = shareStates.get(key);
+                if (isVisible) {
+                    preview.classList.remove('visible');
+                    shareStates.set(key, false);
+                } else {
+                    preview.classList.add('visible');
+                    shareStates.set(key, true);
+                }
             }
         });
     });
