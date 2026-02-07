@@ -11,15 +11,17 @@ keywords: "buy books, physical book, download books, Beau Holliday, indie author
 
 You enjoy what we do here.
 
-You deserve something to keep,
-something to hold in your hands,
-make it your own.
+You deserve something to keep,  
+something to hold in your hands,  
+make it your own.  
+---
 
 ### She Spoke To Me - a collection of poems she didn't know she wrote
 Coming Soon
 
 ### Sincerely, Beau 
 Coming Soon
+---
 
 *The library is undergoing massive renovation. 
 Stay clear, sweetie...for now.*
