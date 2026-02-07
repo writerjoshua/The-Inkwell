@@ -7,6 +7,7 @@ twitter-title: "Prompts Introduction"
 twitter-description: "This is how to leverage the metadata for sharing"
 keywords: "romance, reader submission, erotica, writing prompts, sincerelybeau, beau holliday, sexy stories, romantic, poetry, love, lust, smut, creative writing, haiku, fiction, fantasy"
 ---
+
 ![Mysterious faded auburn image of Beau Holliday, at night, facing a campfire](assets/media/readbh-banner.jpeg)
 # Welcome to The Inkwell's Prompt Collection!
 
